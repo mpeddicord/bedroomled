@@ -125,7 +125,7 @@ def update_strip():
         
         
 def update_sides():
-    global strip_right, strip_center, strip_left   
+    global strip, strip_right, strip_center, strip_left   
     if not strip_right:
         strip[0:120:1]  = (0,0,0,0)
     if not strip_center:
@@ -356,4 +356,5 @@ while True:
         
     except KeyboardInterrupt as e:
         running_effect = False
+
 
