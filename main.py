@@ -349,18 +349,10 @@ while True:
                 update_strip()
     
     except OSError as e:
+        print(e)
         restart_and_reconnect()
         running_effect = False
         
     except KeyboardInterrupt as e:
         running_effect = False
 
-
-
-
-
-
-
-
-
-#hello
