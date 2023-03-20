@@ -125,6 +125,7 @@ def update_strip():
         
         
 def update_sides():
+    global strip_right, strip_center, strip_left   
     if not strip_right:
         strip[:120:1]  = (0,0,0,0)
     if not strip_center:
@@ -224,7 +225,7 @@ def restart_and_reconnect():
   machine.reset()
 
 def process_updates(topic, msg):
-    global strip_power, strip_brightness, strip_r, strip_g, strip_b, strip_w, strip_effect
+    global strip_power, strip_brightness, strip_r, strip_g, strip_b, strip_w, strip_effect, strip_left, strip_center, strip_right
     
     if client == 0:
         return
@@ -248,11 +249,11 @@ def process_updates(topic, msg):
         if('effect' in msg_obj):
             if msg_obj['effect'] in ['leftflip', 'centerflip','rightflip']:
                 if msg_obj['effect'] is 'leftflip':
-                   strip_left != strip_left
+                   strip_left = not strip_left
                 if msg_obj['effect'] is 'centerflip':
-                   strip_center != strip_center
+                   strip_center = not strip_center
                 if msg_obj['effect'] is 'rightflip':
-                   strip_right != strip_right
+                   strip_right = not strip_right
             else:
                 strip_effect = msg_obj['effect']
             
