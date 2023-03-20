@@ -304,9 +304,9 @@ def publish_status():
     print("Brightness :" + str(strip_brightness))
     print("RGBW :" + str([strip_r, strip_g, strip_b, strip_w]))
     print("Effect :" + strip_effect)
-    print("Left :" + strip_left)
-    print("Center :" + strip_center)
-    print("Right :" + strip_right)
+    print("Left :" + str(strip_left))
+    print("Center :" + str(strip_center))
+    print("Right :" + str(strip_right))
 
     
 #connect to WLAN
@@ -354,6 +354,7 @@ while True:
         
     except KeyboardInterrupt as e:
         running_effect = False
+
 
 
 
