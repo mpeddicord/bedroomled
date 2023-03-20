@@ -127,11 +127,11 @@ def update_strip():
 def update_sides():
     global strip_right, strip_center, strip_left   
     if not strip_right:
-        strip[:120:1]  = (0,0,0,0)
+        strip[0:120:1]  = (0,0,0,0)
     if not strip_center:
-        strip[121:240:1]  = (0,0,0,0)
+        strip[120:240:1]  = (0,0,0,0)
     if not strip_left:
-        strip[241:360:1]  = (0,0,0,0)
+        strip[240:360:1]  = (0,0,0,0)
     
 def update_hueshift():
     global strip, numpix, running_effect, thread_finished, strip_brightness
