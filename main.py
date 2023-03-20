@@ -1,362 +1,139 @@
-import os
-import json
-import machine
-import network
-import time
-from simpleMQTT import MQTTClient
-from neopixel import Neopixel
-import rp2
-import random
-import _thread
-import senko
-
-#Clears old PIO programs from previous iterations of this program.
+AM='power'
+AL='every4'
+AK='every3'
+AJ='every2'
+AI=OSError
+A0='state'
+z='right'
+y='center'
+x='left'
+w=str
+v=open
+m='b'
+l='g'
+e='w'
+d='brightness'
+c=int
+Y='color'
+X='r'
+U=''
+O=False
+M='effect'
+K=True
+B=print
+import os,json as V,network as n,senko,machine as o,gc
+gc.collect()
+B(gc.mem_free())
+B('Loading secrets...')
+Z=v('secrets.json',X)
+P=V.loads(Z.read())
+A1=P['ssid']
+A2=P['password']
+f=P['mqttserver']
+A3=P['mqttusername']
+A4=P['mqttpassword']
+p=P['clientid']
+Z.close()
+B(gc.mem_free())
+W=n.WLAN(n.STA_IF)
+W.active(K)
+W.connect(A1,A2)
+while not W.isconnected()and W.status()>=0:0
+B('Connected to Wifi')
+B(W.ifconfig())
+B(gc.mem_free())
+A5='https://github.com/mpeddicord/bedroomled/blob/master/'
+A6=senko.Senko(U,U,url=A5,files=['main.py'])
+if A6.update():B('Updated to the latest version! Rebooting...');o.reset()
+import time as g
+from simpleMQTT import MQTTClient as A7
+from neopixel import Neopixel as A8
+import rp2,random,_thread as h
 rp2.PIO(0).remove_program()
-
-print("Loading secrets...")
-f = open("secrets.json", 'r')
-secrets = json.loads(f.read())
-
-#secrets
-ssid = secrets['ssid']
-password = secrets['password']
-mqtt_server = secrets['mqttserver']
-mqtt_username = secrets['mqttusername']
-mqtt_password = secrets['mqttpassword']
-client_id = secrets['clientid']
-
-#filesystem
-settings = "settings.json"
-
-#subscription and publish topics
-state_topic = b'masterbed/rgbw1'
-command_topic = b'masterbed/rgbw1/set'
-
-#light state
-strip_brightness = 255
-strip_r = 255
-strip_g = 255
-strip_b = 255
-strip_w = 255
-strip_power = True
-strip_effect = ""
-strip_left = True
-strip_center = True
-strip_right = True
-
-effect_thread = ""
-running_effect = False
-thread_finished = False
-
-#neopixel
-numpix = 360
-strip = Neopixel(numpix, 0, 1, "GRBW")
-
-def update_strip():
-    global running_effect, thread_finished, effect_thread, strip, strip_r, strip_g, strip_b, strip_w, strip_brightness   
-    
-    #signal the thread to end and wait for it to finish
-    if running_effect:
-        thread_finished = False
-        running_effect = False
-        while thread_finished == False:
-            pass
-        
-    if strip_power == False:
-        color = (0, 0, 0, 0)
-        brightness = 0
-        strip.fill(color, brightness)
-        strip.show()
-        return
-    
-    if strip_effect == "":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        update_sides()
-        strip.show()
-        return
-    
-    if strip_effect == "every2":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::2] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-
-    if strip_effect == "every3":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::3] = (0,0,0,0)
-        strip[1::3] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-    
-    if strip_effect == "every4":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::4] = (0,0,0,0)
-        strip[1::4] = (0,0,0,0)
-        strip[2::4] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-        
-    if strip_effect == "hueshift":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_hueshift, ())
-            
-    if strip_effect == "whitefairy":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_whitefairy, ())
-        
-    if strip_effect == "colorfairy":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_colorfairy, ())
-        
-        
-def update_sides():
-    if not strip_right:
-        strip[:120:1]  = (0,0,0,0)
-    if not strip_center:
-        strip[121:240:1]  = (0,0,0,0)
-    if not strip_left:
-        strip[241:360:1]  = (0,0,0,0)
-    
-def update_hueshift():
-    global strip, numpix, running_effect, thread_finished, strip_brightness
-    
-    strip.fill((0,0,0,0))
-    
-    hue = 0
-    while running_effect:
-        color = strip.colorHSV(hue, 255, 150)
-        strip.fill(color, strip_brightness)
-        strip.show()
-        
-        hue += 150
-        
-    thread_finished = True
-    return
-    
-def update_whitefairy():
-    global strip, numpix, running_effect, thread_finished, strip_brightness
-    
-    strip.fill((0,0,0,0))
-    strip.brightness(strip_brightness)
-    strip[::numpix//4] = (255,255,255,255)
-    
-    while running_effect:
-        strip.rotate_right(1)
-        strip.show()
-        
-    thread_finished = True
-    return
-        
-def update_colorfairy():
-    global strip, numpix, running_effect, thread_finished
-    
-    seperation = numpix // 4;
-    
-    strip.fill((0,0,0,0))
-    strip.brightness(strip_brightness)
-    strip[0] = (255,0,0,0)
-    strip[seperation] = (0,255,0,0)
-    strip[seperation*2] = (0,0,255,0)
-    strip[seperation*3] = (0,0,0,255)
-    
-    while running_effect:
-        strip.rotate_right(1)
-        strip.show()
-        
-    thread_finished = True
-    return
-
-#Load in light state from save
-if settings in os.listdir():
-    print("Restoring settings...")
-    f = open(settings, 'r')
-    settingData = json.loads(f.read())
-    strip_brightness = settingData["brightness"]
-    strip_r = settingData["r"]
-    strip_g = settingData["g"]
-    strip_b = settingData["b"]
-    strip_w = settingData["w"]
-    strip_power = settingData["power"]
-    strip_effect = settingData["effect"]
-    if 'left' in settingData:
-       strip_left = settingData["left"]
-    if 'center' in settingData:
-       strip_center = settingData["center"]
-    if 'right' in settingData:
-       strip_right = settingData["right"]
-    
-#status update
-last_message = 0
-message_interval = 5
-
-
-def sub_cb(topic, msg):
-  print((topic, msg))
-  process_updates(topic, msg)
-
-def connect_and_subscribe():
-  global client_id, mqtt_server, topic_sub
-  client = MQTTClient(client_id, mqtt_server, 1883, mqtt_username, mqtt_password)
-  client.set_callback(sub_cb)
-  client.connect()
-  client.subscribe(command_topic)
-  print('Connected to MQTT broker: ', mqtt_server)
-  return client
-
-def restart_and_reconnect():
-  print('Failed to connect to MQTT broker. Reconnecting...')
-  time.sleep(10)
-  machine.reset()
-
-def process_updates(topic, msg):
-    global strip_power, strip_brightness, strip_r, strip_g, strip_b, strip_w, strip_effect
-    
-    if client == 0:
-        return
-    
-    if topic == command_topic:
-        msg_obj = json.loads(msg)
-        print(msg_obj)
-        
-        if('state' in msg_obj):
-            strip_power = msg_obj['state'] == 'ON'
-        
-        if('brightness' in msg_obj):
-            strip_brightness = int(msg_obj['brightness'])
-            
-        if('color' in msg_obj):
-            strip_r = int(msg_obj['color']['r'])
-            strip_g = int(msg_obj['color']['g'])
-            strip_b = int(msg_obj['color']['b'])
-            strip_w = int(msg_obj['color']['w'])
-            
-        if('effect' in msg_obj):
-            if msg_obj['effect'] in ['leftflip', 'centerflip','rightflip']:
-                if msg_obj['effect'] is 'leftflip':
-                   strip_left != strip_left
-                if msg_obj['effect'] is 'centerflip':
-                   strip_center != strip_center
-                if msg_obj['effect'] is 'rightflip':
-                   strip_right != strip_right
-            else:
-                strip_effect = msg_obj['effect']
-            
-        if strip_effect == 'none':
-            strip_effect = ''
-            
-    update_strip()
-    publish_status()
-    write_settings()
-    
-def write_settings():
-    f = open(settings, 'w')
-    
-    f.write(json.dumps({
-        'brightness': strip_brightness,
-        'r': strip_r,
-        'g': strip_g,
-        'b': strip_b,
-        'w': strip_w,
-        'power': strip_power,
-        'effect': strip_effect,
-        'left': strip_left,
-        'center': strip_center,
-        'right': strip_right,
-        
-        }))
-    
-    f.close()
-
-    
-def publish_status():
-    
-    state = {
-        "state": "ON" if strip_power else "OFF",
-        "brightness": strip_brightness,
-        "color_mode": "rgbw",
-        "effect": strip_effect,
-        "color": {
-            'r': strip_r,
-            'g': strip_g,
-            'b': strip_b,
-            'w': strip_w
-            }
-        }
-    
-    client.publish(state_topic, json.dumps(state))
-    
-    print("Power :" + str(strip_power))
-    print("Brightness :" + str(strip_brightness))
-    print("RGBW :" + str([strip_r, strip_g, strip_b, strip_w]))
-    print("Effect :" + strip_effect)
-    print("Left :" + strip_left)
-    print("Center :" + strip_center)
-    print("Right :" + strip_right)
-
-    
-#connect to WLAN
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-wlan.connect(ssid, password)
-
-while not wlan.isconnected() and wlan.status() >= 0:
-    pass
-
-print("Connected to Wifi")
-print(wlan.ifconfig())
-
-
-OTA = senko.Senko(
-  user="mpeddicord", # Required
-  repo="bedroomled", # Required
-  branch="master", # Optional: Defaults to "master"
-  working_dir="", # Optional: Defaults to "app"
-  files = ["main.py"]
-)
-
-if OTA.update():
-    print("Updated to the latest version! Rebooting...")
-    machine.reset()
-    
-#connect to mqtt
-try:
-    client = connect_and_subscribe()
-except OSError as e:
-    restart_and_reconnect()
-    
-print("MQTT connected")
-update_strip()
-
-#main update loop
-while True:
-    try:
-        client.check_msg()
-        
-        if (time.time() - last_message) > message_interval:
-            last_message = time.time()
-            publish_status();
-            if strip_effect in ['every2', 'every3','every4', '']:
-                update_strip()
-    
-    except OSError as e:
-        restart_and_reconnect()
-        running_effect = False
-        
-    except KeyboardInterrupt as e:
-        running_effect = False
-
-
-
-
-
+i='settings.json'
+A9=b'masterbed/rgbw1'
+q=b'masterbed/rgbw1/set'
+C=255
+G=255
+H=255
+I=255
+J=255
+N=K
+D=U
+Q=K
+R=K
+S=K
+a=U
+E=O
+L=O
+T=360
+A=A8(T,0,1,'GRBW')
+def j():
+	global E,L,a,A,G,H,I,J,C
+	if E:
+		L=O;E=O
+		while L==O:0
+	if N==O:B=0,0,0,0;F=0;A.fill(B,F);A.show();return
+	if D==U:B=G,H,I,J;F=C;A.fill(B,F);b();A.show();return
+	if D==AJ:B=G,H,I,J;F=C;A.fill(B,F);A[::2]=0,0,0,0;b();A.show();return
+	if D==AK:B=G,H,I,J;F=C;A.fill(B,F);A[::3]=0,0,0,0;A[1::3]=0,0,0,0;b();A.show();return
+	if D==AL:B=G,H,I,J;F=C;A.fill(B,F);A[::4]=0,0,0,0;A[1::4]=0,0,0,0;A[2::4]=0,0,0,0;b();A.show();return
+	if D=='hueshift':E=K;a=h.start_new_thread(AA,())
+	if D=='whitefairy':E=K;a=h.start_new_thread(AB,())
+	if D=='colorfairy':E=K;a=h.start_new_thread(AC,())
+def b():
+	if not S:A[:120:1]=0,0,0,0
+	if not R:A[121:240:1]=0,0,0,0
+	if not Q:A[241:360:1]=0,0,0,0
+def AA():
+	global A,T,E,L,C;A.fill((0,0,0,0));B=0
+	while E:D=A.colorHSV(B,255,150);A.fill(D,C);A.show();B+=150
+	L=K;return
+def AB():
+	global A,T,E,L,C;A.fill((0,0,0,0));A.brightness(C);A[::T//4]=255,255,255,255
+	while E:A.rotate_right(1);A.show()
+	L=K;return
+def AC():
+	global A,T,E,L;B=T//4;A.fill((0,0,0,0));A.brightness(C);A[0]=255,0,0,0;A[B]=0,255,0,0;A[B*2]=0,0,255,0;A[B*3]=0,0,0,255
+	while E:A.rotate_right(1);A.show()
+	L=K;return
+if i in os.listdir():
+	B('Restoring settings...');Z=v(i,X);F=V.loads(Z.read());C=F[d];G=F[X];H=F[l];I=F[m];J=F[e];N=F[AM];D=F[M]
+	if x in F:Q=F[x]
+	if y in F:R=F[y]
+	if z in F:S=F[z]
+r=0
+AD=5
+def AE(topic,msg):A=topic;B((A,msg));AG(A,msg)
+def AF():global p,f,AN;A=A7(p,f,1883,A3,A4);A.set_callback(AE);A.connect();A.subscribe(q);B('Connected to MQTT broker: ',f);return A
+def s():B('Failed to connect to MQTT broker. Reconnecting...');g.sleep(10);o.reset()
+def AG(topic,msg):
+	K='rightflip';F='centerflip';E='leftflip';global N,C,G,H,I,J,D
+	if k==0:return
+	if topic==q:
+		A=V.loads(msg);B(A)
+		if A0 in A:N=A[A0]=='ON'
+		if d in A:C=c(A[d])
+		if Y in A:G=c(A[Y][X]);H=c(A[Y][l]);I=c(A[Y][m]);J=c(A[Y][e])
+		if M in A:
+			if A[M]in[E,F,K]:
+				if A[M]is E:Q!=Q
+				if A[M]is F:R!=R
+				if A[M]is K:S!=S
+			else:D=A[M]
+		if D=='none':D=U
+	j();t();AH()
+def AH():A=v(i,e);A.write(V.dumps({d:C,X:G,l:H,m:I,e:J,AM:N,M:D,x:Q,y:R,z:S}));A.close()
+def t():A={A0:'ON'if N else'OFF',d:C,'color_mode':'rgbw',M:D,Y:{X:G,l:H,m:I,e:J}};k.publish(A9,V.dumps(A));B('Power :'+w(N));B('Brightness :'+w(C));B('RGBW :'+w([G,H,I,J]));B('Effect :'+D);B('Left :'+Q);B('Center :'+R);B('Right :'+S)
+try:k=AF()
+except AI as u:s()
+B('MQTT connected')
+j()
+while K:
+	try:
+		k.check_msg()
+		if g.time()-r>AD:
+			r=g.time();t()
+			if D in[AJ,AK,AL,U]:j()
+	except AI as u:s();E=O
+	except KeyboardInterrupt as u:E=O
