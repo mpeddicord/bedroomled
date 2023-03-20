@@ -8,6 +8,7 @@ from neopixel import Neopixel
 import rp2
 import random
 import _thread
+import senko
 
 #Clears old PIO programs from previous iterations of this program.
 rp2.PIO(0).remove_program()
@@ -39,6 +40,9 @@ strip_b = 255
 strip_w = 255
 strip_power = True
 strip_effect = ""
+strip_left = True
+strip_center = True
+strip_right = True
 
 effect_thread = ""
 running_effect = False
@@ -69,6 +73,7 @@ def update_strip():
         color = (strip_r, strip_g, strip_b, strip_w)
         brightness = strip_brightness
         strip.fill(color, brightness)
+        update_sides()
         strip.show()
         return
     
@@ -77,6 +82,7 @@ def update_strip():
         brightness = strip_brightness
         strip.fill(color, brightness)
         strip[::2] = (0,0,0,0)
+        update_sides()
         strip.show()
         return
 
@@ -86,6 +92,7 @@ def update_strip():
         strip.fill(color, brightness)
         strip[::3] = (0,0,0,0)
         strip[1::3] = (0,0,0,0)
+        update_sides()
         strip.show()
         return
     
@@ -96,6 +103,7 @@ def update_strip():
         strip[::4] = (0,0,0,0)
         strip[1::4] = (0,0,0,0)
         strip[2::4] = (0,0,0,0)
+        update_sides()
         strip.show()
         return
         
@@ -110,6 +118,15 @@ def update_strip():
     if strip_effect == "colorfairy":
         running_effect = True
         effect_thread = _thread.start_new_thread(update_colorfairy, ())
+        
+        
+def update_sides():
+    if not strip_right:
+        strip[:120:1]  = (0,0,0,0)
+    if not strip_center:
+        strip[121:240:1]  = (0,0,0,0)
+    if not strip_left:
+        strip[241:360:1]  = (0,0,0,0)
     
 def update_hueshift():
     global strip, numpix, running_effect, thread_finished, strip_brightness
@@ -172,6 +189,12 @@ if settings in os.listdir():
     strip_w = settingData["w"]
     strip_power = settingData["power"]
     strip_effect = settingData["effect"]
+    if 'left' in settingData:
+       strip_left = settingData["left"]
+    if 'center' in settingData:
+       strip_center = settingData["center"]
+    if 'right' in settingData:
+       strip_right = settingData["right"]
     
 #status update
 last_message = 0
@@ -219,7 +242,15 @@ def process_updates(topic, msg):
             strip_w = int(msg_obj['color']['w'])
             
         if('effect' in msg_obj):
-            strip_effect = msg_obj['effect']
+            if msg_obj['effect'] in ['leftflip', 'centerflip','rightflip']:
+                if msg_obj['effect'] is 'leftflip':
+                   strip_left != strip_left
+                if msg_obj['effect'] is 'centerflip':
+                   strip_center != strip_center
+                if msg_obj['effect'] is 'rightflip':
+                   strip_right != strip_right
+            else:
+                strip_effect = msg_obj['effect']
             
         if strip_effect == 'none':
             strip_effect = ''
@@ -238,7 +269,11 @@ def write_settings():
         'b': strip_b,
         'w': strip_w,
         'power': strip_power,
-        'effect': strip_effect
+        'effect': strip_effect,
+        'left': strip_left,
+        'center': strip_center,
+        'right': strip_right,
+        
         }))
     
     f.close()
@@ -265,6 +300,9 @@ def publish_status():
     print("Brightness :" + str(strip_brightness))
     print("RGBW :" + str([strip_r, strip_g, strip_b, strip_w]))
     print("Effect :" + strip_effect)
+    print("Left :" + strip_left)
+    print("Center :" + strip_center)
+    print("Right :" + strip_right)
 
     
 #connect to WLAN
@@ -278,6 +316,18 @@ while not wlan.isconnected() and wlan.status() >= 0:
 print("Connected to Wifi")
 print(wlan.ifconfig())
 
+
+OTA = senko.Senko(
+  user="mpeddicord", # Required
+  repo="bedroomled", # Required
+  branch="master", # Optional: Defaults to "master"
+  working_dir="", # Optional: Defaults to "app"
+  files = ["main.py"]
+)
+
+if OTA.update():
+    print("Updated to the latest version! Rebooting...")
+    machine.reset()
     
 #connect to mqtt
 try:
