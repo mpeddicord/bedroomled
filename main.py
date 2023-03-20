@@ -9,6 +9,10 @@ import rp2
 import random
 import _thread
 import senko
+import gc
+
+gc.collect()
+print(gc.mem_free())
 
 #Clears old PIO programs from previous iterations of this program.
 rp2.PIO(0).remove_program()
@@ -317,13 +321,8 @@ print("Connected to Wifi")
 print(wlan.ifconfig())
 
 
-OTA = senko.Senko(
-  user="mpeddicord", # Required
-  repo="bedroomled", # Required
-  branch="master", # Optional: Defaults to "master"
-  working_dir="", # Optional: Defaults to "app"
-  files = ["main.py"]
-)
+GITHUB_URL = "https://raw.githubusercontent.com/mpeddicord/bedroomled/master"
+OTA = senko.Senko(None, None, url=GITHUB_URL, files=["main.py"])
 
 if OTA.update():
     print("Updated to the latest version! Rebooting...")
@@ -355,6 +354,7 @@ while True:
         
     except KeyboardInterrupt as e:
         running_effect = False
+
 
 
 
