@@ -48,7 +48,7 @@ class Light:
         
         
     def process_message(self, command_topic, message):
-        if command_topic != self.command_topic:
+        if command_topic != self.command_topic or command_topic == b'masterbed/all/set':
             return
         
         msg_obj = json.loads(message)
@@ -140,9 +140,9 @@ class Light:
         
         
 
-lightLeft = Light(startLED=0, endLED=120, state_topic = b'masterbed/left', command_topic = b'masterbed/left/set')
+lightLeft = Light(startLED=240, endLED=360, state_topic = b'masterbed/left', command_topic = b'masterbed/left/set')
 lightBottom = Light(startLED=120, endLED=240, state_topic = b'masterbed/bottom', command_topic = b'masterbed/bottom/set')
-lightRight = Light(startLED=240, endLED=360, state_topic = b'masterbed/right', command_topic = b'masterbed/right/set')
+lightRight = Light(startLED=0, endLED=120, state_topic = b'masterbed/right', command_topic = b'masterbed/right/set')
 
 #neopixel
 numpix = 360
@@ -180,6 +180,7 @@ def connect_and_subscribe():
   client.subscribe(lightLeft.command_topic)
   client.subscribe(lightBottom.command_topic)
   client.subscribe(lightRight.command_topic)
+  client.subscribe(b'masterbed/all/set')
   print('Connected to MQTT broker: ', mqtt_server)
   return client
 
@@ -255,13 +256,10 @@ print("MQTT connected")
 while True:
     try:
         client.check_msg()
-
-        #if strip_effect in ['every2', 'every3','every4', '']:
-            #update_strip()
         
         if (time.time() - last_message) > message_interval:
             last_message = time.time()
-            publish_status();
+            publish_status()
     
     except OSError as e:
         print(e)
