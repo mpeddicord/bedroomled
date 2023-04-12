@@ -43,15 +43,15 @@ class Light:
         self.effect = effect
         self.startLED = startLED
         self.endLED = endLED
-        self.state_topic
-        self.command_topic
+        self.state_topic = state_topic
+        self.command_topic = command_topic
         
         
     def process_message(self, command_topic, message):
         if command_topic != self.command_topic:
             return
         
-        msg_obj = json.loads(msg)
+        msg_obj = json.loads(message)
         print(msg_obj)
         
         if('state' in msg_obj):
@@ -73,7 +73,7 @@ class Light:
             self.effect = ''
         
     def update_strip(self, strip):        
-        if power == False:
+        if self.power == False:
             strip[self.startLED:self.endLED: 1] = (0,0,0,0,0)
             return
         
@@ -155,9 +155,9 @@ if settings in os.listdir():
     settingData = json.loads(f.read())
         
     if len(settingData) == 3:
-        leftLeft.deserialize(settingData[0])
-        leftBottom.deserialize(settingData[1])
-        leftRight.deserialize(settingData[2])
+        lightLeft.deserialize(settingData[0])
+        lightBottom.deserialize(settingData[1])
+        lightRight.deserialize(settingData[2])
 
 lightLeft.update_strip(strip)
 lightBottom.update_strip(strip)
@@ -192,6 +192,8 @@ def process_updates(topic, msg):
 
     if client == 0:
         return
+    
+    print(msg)
     
     lightLeft.process_message(topic, msg)
     lightBottom.process_message(topic, msg)
@@ -234,12 +236,12 @@ print("Connected to Wifi")
 print(wlan.ifconfig())
 
 
-#GITHUB_URL = "https://raw.githubusercontent.com/mpeddicord/bedroomled/master"
-#OTA = senko.Senko(None, None, url=GITHUB_URL, files=["main.py"])
+GITHUB_URL = "https://raw.githubusercontent.com/mpeddicord/bedroomled/master"
+OTA = senko.Senko(None, None, url=GITHUB_URL, files=["main.py", "neopixel.py"])
 
-#if OTA.update():
-#    print("Updated to the latest version! Rebooting...")
-#    machine.reset()
+if OTA.update():
+    print("Updated to the latest version! Rebooting...")
+    machine.reset()
     
 #connect to mqtt
 try:
@@ -267,5 +269,6 @@ while True:
         
     except KeyboardInterrupt as e:
         running_effect = False
+
 
 
