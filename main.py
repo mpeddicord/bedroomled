@@ -255,12 +255,13 @@ print("MQTT connected")
 while True:
     try:
         client.check_msg()
+
+        #if strip_effect in ['every2', 'every3','every4', '']:
+            #update_strip()
         
         if (time.time() - last_message) > message_interval:
             last_message = time.time()
-            publish_status()
-            #if strip_effect in ['every2', 'every3','every4', '']:
-            #    update_strips()
+            publish_status();
     
     except OSError as e:
         print(e)
