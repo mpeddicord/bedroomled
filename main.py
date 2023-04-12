@@ -48,7 +48,7 @@ class Light:
         
         
     def process_message(self, command_topic, message):
-        if command_topic != self.command_topic or command_topic == b'masterbed/all/set':
+        if command_topic != self.command_topic and command_topic != b'masterbed/all/set':
             return
         
         msg_obj = json.loads(message)
@@ -144,6 +144,8 @@ lightLeft = Light(startLED=240, endLED=360, state_topic = b'masterbed/left', com
 lightBottom = Light(startLED=120, endLED=240, state_topic = b'masterbed/bottom', command_topic = b'masterbed/bottom/set')
 lightRight = Light(startLED=0, endLED=120, state_topic = b'masterbed/right', command_topic = b'masterbed/right/set')
 
+lightAll = Light(state_topic = b'masterbed/all', command_topic = b'masterbed/all/set')
+
 #neopixel
 numpix = 360
 strip = Neopixel(numpix, 0, 1, "GRBW")
@@ -180,7 +182,7 @@ def connect_and_subscribe():
   client.subscribe(lightLeft.command_topic)
   client.subscribe(lightBottom.command_topic)
   client.subscribe(lightRight.command_topic)
-  client.subscribe(b'masterbed/all/set')
+  client.subscribe(lightAll.command_topic)
   print('Connected to MQTT broker: ', mqtt_server)
   return client
 
@@ -195,10 +197,11 @@ def process_updates(topic, msg):
         return
     
     print(msg)
-    
+        
     lightLeft.process_message(topic, msg)
     lightBottom.process_message(topic, msg)
     lightRight.process_message(topic, msg)
+    lightAll.process_message(topic, msg)
     
     lightLeft.update_strip(strip)
     lightBottom.update_strip(strip)
@@ -224,6 +227,7 @@ def publish_status():
     client.publish(lightLeft.state_topic, lightLeft.dump_state())
     client.publish(lightBottom.state_topic, lightBottom.dump_state())
     client.publish(lightRight.state_topic, lightRight.dump_state())
+    client.publish(lightAll.state_topic, lightAll.dump_state())
       
 #connect to WLAN
 wlan = network.WLAN(network.STA_IF)
@@ -260,6 +264,8 @@ while True:
         if (time.time() - last_message) > message_interval:
             last_message = time.time()
             publish_status()
+            #if strip_effect in ['every2', 'every3','every4', '']:
+            #    update_strips()
     
     except OSError as e:
         print(e)
