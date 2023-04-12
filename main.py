@@ -32,179 +32,141 @@ client_id = secrets['clientid']
 #filesystem
 settings = "settings.json"
 
-#subscription and publish topics
-state_topic = b'masterbed/rgbw1'
-command_topic = b'masterbed/rgbw1/set'
+class Light:
+    def __init__(self, state_topic, command_topic, brightness=255, r=255, g=255, b=255, w=255, power=True, effect="", startLED=0, endLED=0):
+        self.brightness = brightness
+        self.r = r
+        self.g = g
+        self.b = b
+        self.w = w
+        self.power = power
+        self.effect = effect
+        self.startLED = startLED
+        self.endLED = endLED
+        self.state_topic
+        self.command_topic
+        
+        
+    def process_message(self, command_topic, message):
+        if command_topic != self.command_topic:
+            return
+        
+        msg_obj = json.loads(msg)
+        print(msg_obj)
+        
+        if('state' in msg_obj):
+            self.power = msg_obj['state'] == 'ON'
+        
+        if('brightness' in msg_obj):
+            self.brightness = int(msg_obj['brightness'])
+            
+        if('color' in msg_obj):
+            self.r = int(msg_obj['color']['r'])
+            self.g = int(msg_obj['color']['g'])
+            self.b = int(msg_obj['color']['b'])
+            self.w = int(msg_obj['color']['w'])
+            
+        if('effect' in msg_obj):
+            self.effect = msg_obj['effect']
+            
+        if self.effect == 'none':
+            self.effect = ''
+        
+    def update_strip(self, strip):        
+        if power == False:
+            strip[self.startLED:self.endLED: 1] = (0,0,0,0,0)
+            return
+        
+        if self.effect == "":
+            strip[self.startLED:self.endLED: 1] = (self.r, self.g, self.b, self.w, self.brightness)
+            return
+        
+        if self.effect == "every2":
+            strip[self.startLED:self.endLED: 1] = (0,0,0,0,0)
+            strip[self.startLED:self.endLED: 2] = (self.r, self.g, self.b, self.w, self.brightness)
+            return
 
-#light state
-strip_brightness = 255
-strip_r = 255
-strip_g = 255
-strip_b = 255
-strip_w = 255
-strip_power = True
-strip_effect = ""
-strip_left = True
-strip_center = True
-strip_right = True
+        if self.effect == "every3":
+            strip[self.startLED:self.endLED: 1] = (0,0,0,0,0)
+            strip[self.startLED:self.endLED: 3] = (self.r, self.g, self.b, self.w, self.brightness)
+            return
+        
+        if self.effect == "every4":
+            strip[self.startLED:self.endLED: 1] = (0,0,0,0,0)
+            strip[self.startLED:self.endLED: 4] = (self.r, self.g, self.b, self.w, self.brightness)
+            return
+    
+    def dump_state(self):
+        state = {
+        "state": "ON" if self.power else "OFF",
+        "brightness": self.brightness,
+        "color_mode": "rgbw",
+        "effect": self.effect,
+        "color": {
+            'r': self.r,
+            'g': self.g,
+            'b': self.b,
+            'w': self.w
+            }
+        }
+    
+        return json.dumps(state)
+    
+    def print_state(self):
+        print("Power :" + str(self.power))
+        print("Brightness :" + str(self.brightness))
+        print("RGBW :" + str([self.r, self.g, self.b, self.w]))
+        print("Effect :" + self.effect)
+        
+    def serialize(self):
+        return {
+            'brightness': self.brightness,
+            'r': self.r,
+            'g': self.g,
+            'b': self.b,
+            'w': self.w,
+            'power': self.power,
+            'effect': self.effect
+        }
+        
+    def deserialize(self, data):
+        self.brightness = data["brightness"]
+        self.r = data["r"]
+        self.g = data["g"]
+        self.b = data["b"]
+        self.w = data["w"]
+        self.power = data["power"]
+        self.effect = data["effect"]
+        
+        
 
-effect_thread = ""
-running_effect = False
-thread_finished = False
+lightLeft = Light(startLED=0, endLED=120, state_topic = b'masterbed/left', command_topic = b'masterbed/left/set')
+lightBottom = Light(startLED=120, endLED=240, state_topic = b'masterbed/bottom', command_topic = b'masterbed/bottom/set')
+lightRight = Light(startLED=240, endLED=360, state_topic = b'masterbed/right', command_topic = b'masterbed/right/set')
 
 #neopixel
 numpix = 360
 strip = Neopixel(numpix, 0, 1, "GRBW")
-
-def update_strip():
-    global running_effect, thread_finished, effect_thread, strip, strip_r, strip_g, strip_b, strip_w, strip_brightness   
-    
-    #signal the thread to end and wait for it to finish
-    if running_effect:
-        thread_finished = False
-        running_effect = False
-        while thread_finished == False:
-            pass
-        
-    if strip_power == False:
-        color = (0, 0, 0, 0)
-        brightness = 0
-        strip.fill(color, brightness)
-        strip.show()
-        return
-    
-    if strip_effect == "":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        update_sides()
-        strip.show()
-        return
-    
-    if strip_effect == "every2":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::2] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-
-    if strip_effect == "every3":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::3] = (0,0,0,0)
-        strip[1::3] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-    
-    if strip_effect == "every4":
-        color = (strip_r, strip_g, strip_b, strip_w)
-        brightness = strip_brightness
-        strip.fill(color, brightness)
-        strip[::4] = (0,0,0,0)
-        strip[1::4] = (0,0,0,0)
-        strip[2::4] = (0,0,0,0)
-        update_sides()
-        strip.show()
-        return
-        
-    if strip_effect == "hueshift":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_hueshift, ())
-            
-    if strip_effect == "whitefairy":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_whitefairy, ())
-        
-    if strip_effect == "colorfairy":
-        running_effect = True
-        effect_thread = _thread.start_new_thread(update_colorfairy, ())
-        
-        
-def update_sides():
-    global strip, strip_right, strip_center, strip_left   
-    if not strip_right:
-        strip[0:120:1]  = (0,0,0,0)
-    if not strip_center:
-        strip[120:240:1]  = (0,0,0,0)
-    if not strip_left:
-        strip[240:360:1]  = (0,0,0,0)
-    
-def update_hueshift():
-    global strip, numpix, running_effect, thread_finished, strip_brightness
-    
-    strip.fill((0,0,0,0))
-    
-    hue = 0
-    while running_effect:
-        color = strip.colorHSV(hue, 255, 150)
-        strip.fill(color, strip_brightness)
-        strip.show()
-        
-        hue += 150
-        
-    thread_finished = True
-    return
-    
-def update_whitefairy():
-    global strip, numpix, running_effect, thread_finished, strip_brightness
-    
-    strip.fill((0,0,0,0))
-    strip.brightness(strip_brightness)
-    strip[::numpix//4] = (255,255,255,255)
-    
-    while running_effect:
-        strip.rotate_right(1)
-        strip.show()
-        
-    thread_finished = True
-    return
-        
-def update_colorfairy():
-    global strip, numpix, running_effect, thread_finished
-    
-    seperation = numpix // 4;
-    
-    strip.fill((0,0,0,0))
-    strip.brightness(strip_brightness)
-    strip[0] = (255,0,0,0)
-    strip[seperation] = (0,255,0,0)
-    strip[seperation*2] = (0,0,255,0)
-    strip[seperation*3] = (0,0,0,255)
-    
-    while running_effect:
-        strip.rotate_right(1)
-        strip.show()
-        
-    thread_finished = True
-    return
-
+ 
 #Load in light state from save
 if settings in os.listdir():
     print("Restoring settings...")
     f = open(settings, 'r')
     settingData = json.loads(f.read())
-    strip_brightness = settingData["brightness"]
-    strip_r = settingData["r"]
-    strip_g = settingData["g"]
-    strip_b = settingData["b"]
-    strip_w = settingData["w"]
-    strip_power = settingData["power"]
-    strip_effect = settingData["effect"]
-    if 'left' in settingData:
-       strip_left = settingData["left"]
-    if 'center' in settingData:
-       strip_center = settingData["center"]
-    if 'right' in settingData:
-       strip_right = settingData["right"]
-    
+        
+    if len(settingData) == 3:
+        leftLeft.deserialize(settingData[0])
+        leftBottom.deserialize(settingData[1])
+        leftRight.deserialize(settingData[2])
+
+lightLeft.update_strip(strip)
+lightBottom.update_strip(strip)
+lightRight.update_strip(strip)
+strip.show()
+
 #status update
 last_message = 0
 message_interval = 5
-
 
 def sub_cb(topic, msg):
   print((topic, msg))
@@ -215,7 +177,9 @@ def connect_and_subscribe():
   client = MQTTClient(client_id, mqtt_server, 1883, mqtt_username, mqtt_password)
   client.set_callback(sub_cb)
   client.connect()
-  client.subscribe(command_topic)
+  client.subscribe(lightLeft.command_topic)
+  client.subscribe(lightBottom.command_topic)
+  client.subscribe(lightRight.command_topic)
   print('Connected to MQTT broker: ', mqtt_server)
   return client
 
@@ -225,91 +189,39 @@ def restart_and_reconnect():
   machine.reset()
 
 def process_updates(topic, msg):
-    global strip_power, strip_brightness, strip_r, strip_g, strip_b, strip_w, strip_effect, strip_left, strip_center, strip_right
-    
+
     if client == 0:
         return
     
-    if topic == command_topic:
-        msg_obj = json.loads(msg)
-        print(msg_obj)
-        
-        if('state' in msg_obj):
-            strip_power = msg_obj['state'] == 'ON'
-        
-        if('brightness' in msg_obj):
-            strip_brightness = int(msg_obj['brightness'])
-            
-        if('color' in msg_obj):
-            strip_r = int(msg_obj['color']['r'])
-            strip_g = int(msg_obj['color']['g'])
-            strip_b = int(msg_obj['color']['b'])
-            strip_w = int(msg_obj['color']['w'])
-            
-        if('effect' in msg_obj):
-            if msg_obj['effect'] in ['leftflip', 'centerflip','rightflip']:
-                if msg_obj['effect'] is 'leftflip':
-                   strip_left = not strip_left
-                if msg_obj['effect'] is 'centerflip':
-                   strip_center = not strip_center
-                if msg_obj['effect'] is 'rightflip':
-                   strip_right = not strip_right
-            else:
-                strip_effect = msg_obj['effect']
-            
-        if strip_effect == 'none':
-            strip_effect = ''
-            
-    update_strip()
+    lightLeft.process_message(topic, msg)
+    lightBottom.process_message(topic, msg)
+    lightRight.process_message(topic, msg)
+    
+    lightLeft.update_strip(strip)
+    lightBottom.update_strip(strip)
+    lightRight.update_strip(strip)
+    
+    strip.show()
+    
     publish_status()
+    
+    lightLeft.print_state()
+    lightBottom.print_state()
+    lightRight.print_state()
+    
     write_settings()
     
 def write_settings():
     f = open(settings, 'w')
-    
-    f.write(json.dumps({
-        'brightness': strip_brightness,
-        'r': strip_r,
-        'g': strip_g,
-        'b': strip_b,
-        'w': strip_w,
-        'power': strip_power,
-        'effect': strip_effect,
-        'left': strip_left,
-        'center': strip_center,
-        'right': strip_right,
-        
-        }))
-    
+    f.write(json.dumps((lightLeft.serialize(), lightBottom.serialize(), lightRight.serialize())))
     f.close()
 
     
 def publish_status():
-    
-    state = {
-        "state": "ON" if strip_power else "OFF",
-        "brightness": strip_brightness,
-        "color_mode": "rgbw",
-        "effect": strip_effect,
-        "color": {
-            'r': strip_r,
-            'g': strip_g,
-            'b': strip_b,
-            'w': strip_w
-            }
-        }
-    
-    client.publish(state_topic, json.dumps(state))
-    
-    print("Power :" + str(strip_power))
-    print("Brightness :" + str(strip_brightness))
-    print("RGBW :" + str([strip_r, strip_g, strip_b, strip_w]))
-    print("Effect :" + strip_effect)
-    print("Left :" + str(strip_left))
-    print("Center :" + str(strip_center))
-    print("Right :" + str(strip_right))
-
-    
+    client.publish(lightLeft.state_topic, lightLeft.dump_state())
+    client.publish(lightBottom.state_topic, lightBottom.dump_state())
+    client.publish(lightRight.state_topic, lightRight.dump_state())
+      
 #connect to WLAN
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
@@ -322,12 +234,12 @@ print("Connected to Wifi")
 print(wlan.ifconfig())
 
 
-GITHUB_URL = "https://raw.githubusercontent.com/mpeddicord/bedroomled/master"
-OTA = senko.Senko(None, None, url=GITHUB_URL, files=["main.py"])
+#GITHUB_URL = "https://raw.githubusercontent.com/mpeddicord/bedroomled/master"
+#OTA = senko.Senko(None, None, url=GITHUB_URL, files=["main.py"])
 
-if OTA.update():
-    print("Updated to the latest version! Rebooting...")
-    machine.reset()
+#if OTA.update():
+#    print("Updated to the latest version! Rebooting...")
+#    machine.reset()
     
 #connect to mqtt
 try:
@@ -336,7 +248,6 @@ except OSError as e:
     restart_and_reconnect()
     
 print("MQTT connected")
-update_strip()
 
 #main update loop
 while True:
@@ -345,9 +256,9 @@ while True:
         
         if (time.time() - last_message) > message_interval:
             last_message = time.time()
-            publish_status();
-            if strip_effect in ['every2', 'every3','every4', '']:
-                update_strip()
+            publish_status()
+            #if strip_effect in ['every2', 'every3','every4', '']:
+            #    update_strips()
     
     except OSError as e:
         print(e)

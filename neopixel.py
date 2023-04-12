@@ -194,7 +194,8 @@ class Neopixel:
         else:
             self.pixels[pixel_num] = pix_value
 
-    def __setitem__(self, idx, rgb_w):
+    def __setitem__(self, idx, rgb_w_b):
+        
         """
         if npix is a Neopixel object,
         npix[10] = (0,255,0)        # <- sets #10 to green
@@ -207,7 +208,19 @@ class Neopixel:
         :param rgb_w: Tuple of form (r, g, b) or (r, g, b, w) representing color to be used
         :return:
         """
-        self.set_pixel(idx, rgb_w)
+        
+        if not (3 <= len(rgb_w_b) <= 5):
+            raise ValueError("rgb_w_b must be a tuple with 3, 4, or 5 elements")
+
+        if len(rgb_w_b) == 5:
+            how_bright = rgb_w_b[-1]
+            rgb_w = rgb_w_b[:-1]
+        else:
+            how_bright = None
+            rgb_w = rgb_w_b
+
+        self.set_pixel(idx, rgb_w, how_bright)
+
 
     def colorHSV(self, hue, sat, val):
         """
@@ -315,3 +328,4 @@ class Neopixel:
         :return: None
         """
         self.pixels = array.array("I", [0] * self.num_leds)
+
