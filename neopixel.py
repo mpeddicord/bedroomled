@@ -88,12 +88,12 @@ class Neopixel:
         self.W_in_mode = 'W' in mode
         if self.W_in_mode:
             # RGBW uses different PIO state machine configuration
-            self.sm = rp2.StateMachine(state_machine, sk6812, freq=2000000, sideset_base=Pin(pin))
+            self.sm = rp2.StateMachine(state_machine, sk6812, freq=8000000, sideset_base=Pin(pin))
             # tuple of values required to shift bit into position (check class desc.)
             self.shift = ((mode.index('R') ^ 3) * 8, (mode.index('G') ^ 3) * 8,
                           (mode.index('B') ^ 3) * 8, (mode.index('W') ^ 3) * 8)
         else:
-            self.sm = rp2.StateMachine(state_machine, ws2812, freq=2000000, sideset_base=Pin(pin))
+            self.sm = rp2.StateMachine(state_machine, ws2812, freq=8000000, sideset_base=Pin(pin))
             self.shift = (((mode.index('R') ^ 3) - 1) * 8, ((mode.index('G') ^ 3) - 1) * 8,
                           ((mode.index('B') ^ 3) - 1) * 8, 0)
         self.sm.active(1)
